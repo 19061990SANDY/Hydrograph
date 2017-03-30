@@ -17,6 +17,7 @@ import java.util
 
 import hydrograph.engine.core.component.entity.OutputRDBMSEntity
 import hydrograph.engine.core.component.entity.elements.SchemaField
+import hydrograph.engine.core.custom.exceptions.DelimiterNotFoundException
 import hydrograph.engine.spark.components.base.SparkFlow
 import hydrograph.engine.spark.components.platform.BaseComponentParams
 import hydrograph.engine.spark.components.utils.DbTableUtils
@@ -78,10 +79,11 @@ class OutputOracleComponent(outputRDBMSEntity: OutputRDBMSEntity, oComponentsPar
     } catch {
       case e: SQLException =>
         LOG.error("Error while connecting to database " + e.getMessage)
-        throw new RuntimeException("Error message " , e)
+        throw new DelimiterNotFoundException("\nException in Output Oracle Component - \nComponent Id:[\"" + outputRDBMSEntity.getComponentId + "\"]" +
+          "\nComponent Name:[\"" + outputRDBMSEntity.getComponentName + "\"]\nBatch:[\"" + outputRDBMSEntity.getBatch + "\"]" + e.getMessage())
       case e: Exception =>
         LOG.error("Error while executing '" + query + "' query in executeQuery()")
-        throw new RuntimeException("Error message " , e)
+        throw new RuntimeException("Error message ", e)
     }
   }
 

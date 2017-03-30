@@ -12,6 +12,7 @@
  *******************************************************************************/
 package hydrograph.engine.core.helper;
 
+import hydrograph.engine.core.custom.exceptions.BatchMismatchException;
 import hydrograph.engine.core.entity.Link;
 import hydrograph.engine.core.utilities.SocketUtilities;
 import hydrograph.engine.jaxb.commontypes.TypeBaseComponent;
@@ -116,7 +117,16 @@ public class JAXBTraversal {
 
 				// decrease the dependency by one
 				Integer dependency = componentDependencies.get(dependentComponentID);
-				dependency = dependency - 1;
+
+
+				try{
+					dependency = dependency - 1;
+				}catch(NullPointerException e)
+				{
+					throw new BatchMismatchException("\nError in JAXBTraversal - \nComponent Id:[\"" + dependentComponentID+ "\"]");
+
+				}
+
 
 				// if dependency is resolved then add it to resolved queue
 				if (dependency == 0) {

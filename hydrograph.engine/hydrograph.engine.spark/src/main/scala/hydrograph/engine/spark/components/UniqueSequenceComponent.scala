@@ -2,16 +2,18 @@ package hydrograph.engine.spark.components
 
 import hydrograph.engine.core.component.entity.UniqueSequenceEntity
 import hydrograph.engine.core.component.utils.OperationUtils
+import hydrograph.engine.core.custom.exceptions.FieldNotFoundException
 import hydrograph.engine.spark.components.base.OperationComponentBase
 import hydrograph.engine.spark.components.handler.OperationHelper
 import hydrograph.engine.spark.components.platform.BaseComponentParams
 import hydrograph.engine.transformation.userfunctions.base.TransformBase
 import org.apache.spark.sql.functions._
-import org.apache.spark.sql.{Column, DataFrame}
+import org.apache.spark.sql.{AnalysisException, Column, DataFrame}
 import org.slf4j.LoggerFactory
 
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
+
 /**
   * The Class UniqueSequenceComponent.
   *
@@ -30,7 +32,7 @@ class UniqueSequenceComponent(uniqueSequenceEntity: UniqueSequenceEntity, baseCo
   override def createComponent(): Map[String, DataFrame] = {
 
     LOG.trace(uniqueSequenceEntity.toString)
-    try {
+
       val passThroughFields = OperationUtils.getPassThrougFields(uniqueSequenceEntity.getOutSocketList.get(0).getPassThroughFieldsList, baseComponentParams.getDataFrame().schema.map(_.name)).asScala.toArray[String]
 
       val inputColumn = new Array[Column](passThroughFields.size)
@@ -41,19 +43,18 @@ class UniqueSequenceComponent(uniqueSequenceEntity: UniqueSequenceEntity, baseCo
         })
 
       val operationField = uniqueSequenceEntity.getOperation.getOperationOutputFields.get(0)
-      val df = baseComponentParams.getDataFrame().select(inputColumn: _*).withColumn(operationField, monotonically_increasing_id())
 
-      val outSocketId = uniqueSequenceEntity.getOutSocketList.get(0).getSocketId
-
-      LOG.info("Created Unique Sequence component " + uniqueSequenceEntity.getComponentId
-        +" in batch " + uniqueSequenceEntity.getBatch )
-
-      Map(outSocketId -> df)
+    var df:DataFrame=null
+    try {
+     df = baseComponentParams.getDataFrame().select(inputColumn: _*).withColumn(operationField, monotonically_increasing_id())
     } catch {
-      case ex: Exception =>
-        LOG.error("Error in Unique Sequence component " + uniqueSequenceEntity.getComponentId, ex)
-        throw new RuntimeException ("Error in Unique Sequence component",ex)
+      case e: AnalysisException => throw new FieldNotFoundException(
+        "\nError in Unique Sequence Component - \nComponent Id:[\"" + uniqueSequenceEntity.getComponentId + "\"]" +
+          "\nComponent Name:[\"" + uniqueSequenceEntity.getComponentName + "\"]\nBatch:[\"" + uniqueSequenceEntity.getBatch + "\"]" + e.message)
     }
+      val outSocketId = uniqueSequenceEntity.getOutSocketList.get(0).getSocketId
+       Map(outSocketId -> df)
+
   }
 }
 
